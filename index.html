@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8">
@@ -403,6 +402,10 @@
       font-size: 0.75rem;
       font-weight: 700;
       opacity: 0.95;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 95%;
     }
 
     @keyframes popIn {
@@ -469,7 +472,7 @@
         <div class="action-panel">
           <button class="big-btn" id="actionBtn" onclick="startRace()">
             <span>PARTENZA</span>
-            <span class="btn-subtitle" id="btnSub">Punta 20 su #1</span>
+            <span class="btn-subtitle" id="btnSub">20 su #1</span>
           </button>
         </div>
       </div>
@@ -478,7 +481,6 @@
 
   <script>
     // --- CONFIGURAZIONE CORRIDORI (5 Corsie) ---
-    // Probabilità calibrate per un House Edge ~5%
     const RUNNERS = [
       { id: 1, name: 'Rosso',   color: '#ef4444', odds: 2.20, prob: 0.43, bg: 'rgba(239, 68, 68, 0.25)' },
       { id: 2, name: 'Blu',     color: '#38bdf8', odds: 3.50, prob: 0.27, bg: 'rgba(56, 189, 248, 0.25)' },
@@ -588,7 +590,6 @@
     const bannerSub = document.getElementById('bannerSub');
     const historyBar = document.getElementById('historyBar');
 
-    // Dati dinamici simulazione corsa
     let racers = [];
     let predeterminedWinner = null;
     let raceStartTime = null;
@@ -596,7 +597,6 @@
     let particles = [];
     let lastTickTime = 0;
 
-    // Crea bottoni corridori
     function initRunnersUI() {
       runnersRow.innerHTML = '';
       RUNNERS.forEach(r => {
@@ -644,7 +644,7 @@
     function updateActionSubtitle() {
       const runner = RUNNERS.find(r => r.id === selectedRunnerId);
       const val = parseInt(betInput.value) || 0;
-      btnSub.textContent = `Punta ${val} su #${runner.id} (${runner.name})`;
+      btnSub.textContent = `${val} su #${runner.id}`;
     }
 
     betInput.addEventListener('input', () => {
@@ -680,7 +680,6 @@
       updateBalanceUI();
     });
 
-    // --- SETUP CANVAS & PISTA ---
     function resizeCanvas() {
       const rect = arenaCard.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
@@ -693,7 +692,6 @@
     }
     window.addEventListener('resize', resizeCanvas);
 
-    // --- LOGICA SIMULAZIONE CORSA ---
     function pickWinnerRNG() {
       const r = Math.random();
       let accum = 0;
@@ -718,25 +716,22 @@
 
       isRacing = true;
       actionBtn.classList.add('racing');
-      actionBtn.querySelector('span').textContent = 'CORSA IN CORSO';
-      btnSub.textContent = 'Trattieni il respiro...';
+      actionBtn.querySelector('span').textContent = 'IN PISTA...';
+      btnSub.textContent = 'Trattieni il respiro';
       winnerBanner.className = 'winner-banner';
 
       playStartBell();
 
-      // Determina il vincitore via RNG matematico
       predeterminedWinner = pickWinnerRNG();
 
-      // Inizializza i 5 corridori
       const w = arenaCard.clientWidth;
       const startX = 52;
       const finishX = w - 36;
       const totalDistance = finishX - startX;
-      const raceDuration = 5.2; // Durata ~5 secondi per massima suspense
+      const raceDuration = 5.2;
 
       racers = RUNNERS.map(r => {
         const isWinner = (r.id === predeterminedWinner.id);
-        // Durata arrivo: il vincitore arriva a T, gli altri tra T + 0.15s e T + 0.8s
         const arrivalTime = isWinner ? raceDuration : raceDuration + 0.18 + Math.random() * 0.65;
         return {
           ...r,
@@ -764,7 +759,6 @@
       const finishX = w - 36;
       const totalDistance = finishX - startX;
 
-      // Suono ritmico del galoppo durante la gara
       if (timestamp - lastTickTime > 180 && elapsed < 5.0) {
         playGallopTick();
         lastTickTime = timestamp;
@@ -774,11 +768,9 @@
 
       racers.forEach(r => {
         if (!r.finished) {
-          // Fase di gara con sorpassi organici basati su onde sinusoidali
           r.noisePhase += 0.05;
           const surge = Math.sin(r.noisePhase) * (r.isWinner ? 0.35 : 0.28);
           
-          // Nei secondi finali il vincitore trova lo spunto decisivo
           let finalKick = 0;
           if (elapsed > 3.8 && r.isWinner) {
             finalKick = 0.45;
@@ -787,11 +779,9 @@
           const currentVelocity = r.baseSpeed * (1 + surge + finalKick);
           r.x += currentVelocity;
 
-          // Memorizza trail per effetto scia
           r.trail.push({ x: r.x, opacity: 1.0 });
           if (r.trail.length > 8) r.trail.shift();
 
-          // Genera particelle scia
           if (Math.random() < 0.3) {
             particles.push({
               x: r.x - 4,
@@ -832,7 +822,6 @@
 
       playFinishFanfare(userWon);
 
-      // Mostra Banner
       bannerTitle.textContent = `VINCE IL #${predeterminedWinner.id} (${predeterminedWinner.name})!`;
       if (userWon) {
         bannerSub.textContent = `PRESO! +${wonAmount} crediti (${predeterminedWinner.odds.toFixed(2)}x)`;
@@ -842,10 +831,8 @@
         winnerBanner.className = 'winner-banner active loss';
       }
 
-      // Aggiungi a History Bar
       addHistoryPill(predeterminedWinner, userWon);
 
-      // Resetta stato dopo 2s
       setTimeout(() => {
         isRacing = false;
         actionBtn.classList.remove('racing');
@@ -878,13 +865,11 @@
       return (runnerId - 1) * laneH + laneH / 2;
     }
 
-    // --- RENDERING CANVAS DELLA PISTA ---
     function drawTrack(elapsed) {
       const w = arenaCard.clientWidth;
       const h = arenaCard.clientHeight;
       if (!w || !h) return;
 
-      // Pulizia buffer
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -894,15 +879,12 @@
       const startX = 52;
       const finishX = w - 36;
 
-      // Disegna corsie (5 corsie orizzontali)
       for (let i = 0; i < 5; i++) {
         const y = i * laneH;
 
-        // Sfondo corsia alternato
         ctx.fillStyle = i % 2 === 0 ? 'rgba(255, 255, 255, 0.015)' : 'rgba(0, 0, 0, 0.15)';
         ctx.fillRect(0, y, w, laneH);
 
-        // Linea divisoria corsia
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 6]);
@@ -912,7 +894,6 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Badge Numero Corsia a sinistra
         const runner = RUNNERS[i];
         ctx.fillStyle = runner.color;
         ctx.beginPath();
@@ -926,7 +907,6 @@
         ctx.fillText(`${runner.id}`, 22, y + laneH / 2);
       }
 
-      // Linea di Partenza
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -934,7 +914,6 @@
       ctx.lineTo(startX, h);
       ctx.stroke();
 
-      // Traguardo a scacchi (Finish Line)
       const checkerSize = 6;
       for (let y = 0; y < h; y += checkerSize) {
         for (let x = 0; x < 2; x++) {
@@ -944,7 +923,6 @@
         }
       }
 
-      // Disegna Particelle scia
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.x += p.vx;
@@ -964,13 +942,11 @@
         ctx.globalAlpha = 1.0;
       }
 
-      // Disegna i 5 Corridori (Pallini Neon ad alta luminosità)
       const currentRacers = isRacing ? racers : RUNNERS.map(r => ({ ...r, x: startX, trail: [] }));
 
       currentRacers.forEach(r => {
         const y = getLaneY(r.id);
 
-        // Scia luminosa
         if (r.trail && r.trail.length > 1) {
           for (let t = 0; t < r.trail.length; t++) {
             const alpha = (t + 1) / r.trail.length * 0.4;
@@ -983,7 +959,6 @@
           ctx.globalAlpha = 1.0;
         }
 
-        // Alone luminoso esterno (Glow)
         ctx.shadowColor = r.color;
         ctx.shadowBlur = 14;
         ctx.fillStyle = r.color;
@@ -991,7 +966,6 @@
         ctx.arc(r.x, y, 7.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Nucleo centrale brillante
         ctx.shadowBlur = 0;
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
@@ -1000,7 +974,6 @@
       });
     }
 
-    // Supporto Barra Spaziatrice
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
@@ -1008,7 +981,6 @@
       }
     });
 
-    // Inizializzazione
     initRunnersUI();
     selectRunner(1);
     updateBalanceUI();
