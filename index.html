@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Dot Race - Arcade Derby Edition</title>
+  <style>
+    :root {
+      --bg-main: #0b0f19;
+      --bg-card: #151d30;
+      --bg-input: #1e293b;
+      --accent: #f43f5e;
+      --accent-glow: rgba(244, 63, 94, 0.4);
+      --green: #10b981;
+      --green-glow: rgba(16, 185, 129, 0.4);
+      --gold: #f59e0b;
+      --gold-glow: rgba(245, 158, 11, 0.4);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: var(--bg-main);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    }
+
+    .container {
+      width: 100%;
+      max-width: 650px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* Header Bar */
+    header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: var(--bg-card);
+      padding: 6px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #fff;
+    }
+
+    .logo span {
+      color: var(--gold);
+    }
+
+    .balance-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-input);
+      padding: 3px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .balance-val {
+      color: var(--green);
+      font-family: monospace;
+      font-size: 1.05rem;
+    }
+
+    .btn-reload {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-size: 0.75rem;
+      transition: all 0.2s;
+    }
+
+    .btn-reload:active {
+      background: var(--border);
+      color: #fff;
+    }
+
+    /* History Pills */
+    .history-bar {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 2px 0;
+      scrollbar-width: none;
+      flex-shrink: 0;
+    }
+
+    .history-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .history-pill {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: monospace;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      animation: popIn 0.3s ease;
+      color: #fff;
+    }
+
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-win {
+      background-color: var(--green);
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    .dot-loss {
+      background-color: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    /* Arena Track Canvas */
+    .arena-card {
+      position: relative;
+      flex: 1 1 0;
+      min-height: 200px;
+      background: radial-gradient(circle at center, #172033 0%, #0b0f19 85%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Winner Overlay Banner */
+    .winner-banner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid var(--border);
+      padding: 10px 22px;
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.25s;
+      z-index: 10;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    }
+
+    .winner-banner.active {
+      opacity: 1;
+      animation: popIn 0.3s ease;
+    }
+
+    .winner-title {
+      font-size: 1.25rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .winner-sub {
+      font-size: 0.85rem;
+      font-weight: 700;
+      font-family: monospace;
+      margin-top: 3px;
+    }
+
+    .winner-banner.win .winner-title { color: var(--green); }
+    .winner-banner.win .winner-sub { color: #fff; }
+    .winner-banner.loss .winner-title { color: var(--accent); }
+    .winner-banner.loss .winner-sub { color: var(--text-muted); }
+
+    /* Control Panel */
+    .control-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Runner Selector Buttons */
+    .runners-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+    }
+
+    .runner-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .runner-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.78rem;
+      font-weight: 900;
+      color: #fff;
+    }
+
+    .runner-dot-preview {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .runner-odds {
+      font-size: 0.75rem;
+      font-family: monospace;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .runner-btn.selected {
+      border-color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .runner-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Bottom action & bet row */
+    .bottom-controls {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .bet-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px 8px;
+    }
+
+    .input-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .input-number {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1rem;
+      font-family: monospace;
+      font-weight: 700;
+      outline: none;
+      text-align: right;
+    }
+
+    .quick-bets {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+
+    .quick-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 5px 0;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .quick-btn:active {
+      background: var(--border);
+    }
+
+    /* Big Action Button */
+    .action-panel {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .big-btn {
+      width: 100%;
+      height: 100%;
+      min-height: 64px;
+      border-radius: 10px;
+      border: none;
+      font-size: 1.15rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: transform 0.08s, box-shadow 0.15s, background 0.15s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #0b0f19;
+      box-shadow: 0 4px 18px var(--gold-glow);
+    }
+
+    .big-btn:active {
+      transform: scale(0.96);
+    }
+
+    .big-btn.racing {
+      background: #334155;
+      color: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-subtitle {
+      font-size: 0.75rem;
+      font-weight: 700;
+      opacity: 0.95;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.6); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        🏇 <span>ARCADE</span> DERBY
+      </div>
+      <div class="balance-box">
+        <span>Credito:</span>
+        <span class="balance-val" id="balanceDisplay">1000</span>
+        <button class="btn-reload" id="btnReload" title="Aggiungi 500 crediti">+500</button>
+      </div>
+    </header>
+
+    <!-- History Bar -->
+    <div class="history-bar" id="historyBar">
+      <div class="history-pill"><span class="pill-dot dot-win"></span>#1 Rosso (2.2x)</div>
+      <div class="history-pill"><span class="pill-dot dot-loss"></span>#2 Blu (3.5x)</div>
+      <div class="history-pill"><span class="pill-dot dot-win"></span>#3 Verde (5.8x)</div>
+      <div class="history-pill"><span class="pill-dot dot-loss"></span>#1 Rosso (2.2x)</div>
+      <div class="history-pill"><span class="pill-dot dot-win"></span>#5 Oro (18x)</div>
+    </div>
+
+    <!-- Arena Card con Canvas Pista -->
+    <div class="arena-card" id="arenaCard">
+      <canvas id="trackCanvas"></canvas>
+      <div class="winner-banner" id="winnerBanner">
+        <div class="winner-title" id="bannerTitle">VINCE IL #1!</div>
+        <div class="winner-sub" id="bannerSub">+110 crediti (2.20x)</div>
+      </div>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="control-card">
+      <!-- Selettore dei 5 corridori -->
+      <div class="runners-row" id="runnersRow">
+        <!-- Generati dinamicamente via JS -->
+      </div>
+
+      <!-- Controlli Puntata + Tasto Partenza -->
+      <div class="bottom-controls">
+        <div class="bet-group">
+          <div class="input-row">
+            <span class="input-label">Puntata</span>
+            <input type="number" id="betInput" class="input-number" value="20" min="1" step="1">
+          </div>
+          <div class="quick-bets">
+            <button class="quick-btn" onclick="setBetFraction(0.5)">½</button>
+            <button class="quick-btn" onclick="setBetFraction(2)">2×</button>
+            <button class="quick-btn" onclick="setFixedBet(50)">50</button>
+            <button class="quick-btn" onclick="setMaxBet()">MAX</button>
+          </div>
+        </div>
+
+        <div class="action-panel">
+          <button class="big-btn" id="actionBtn" onclick="startRace()">
+            <span>PARTENZA</span>
+            <span class="btn-subtitle" id="btnSub">Punta 20 su #1</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- CONFIGURAZIONE CORRIDORI (5 Corsie) ---
+    // Probabilità calibrate per un House Edge ~5%
+    const RUNNERS = [
+      { id: 1, name: 'Rosso',   color: '#ef4444', odds: 2.20, prob: 0.43, bg: 'rgba(239, 68, 68, 0.25)' },
+      { id: 2, name: 'Blu',     color: '#38bdf8', odds: 3.50, prob: 0.27, bg: 'rgba(56, 189, 248, 0.25)' },
+      { id: 3, name: 'Verde',   color: '#10b981', odds: 5.80, prob: 0.16, bg: 'rgba(16, 185, 129, 0.25)' },
+      { id: 4, name: 'Viola',   color: '#c084fc', odds: 9.50, prob: 0.09, bg: 'rgba(192, 132, 252, 0.25)' },
+      { id: 5, name: 'Oro',     color: '#f59e0b', odds: 18.00, prob: 0.05, bg: 'rgba(245, 158, 11, 0.25)' }
+    ];
+
+    // --- WEB AUDIO API ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playStartBell() {
+      if (!audioCtx) return;
+      try {
+        const now = audioCtx.currentTime;
+        [880, 1174.66].forEach((f, i) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, now + i * 0.1);
+          gain.gain.setValueAtTime(0.2, now + i * 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.35);
+          osc.start(now + i * 0.1);
+          osc.stop(now + i * 0.1 + 0.35);
+        });
+      } catch (e) {}
+    }
+
+    function playGallopTick() {
+      if (!audioCtx) return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(120 + Math.random() * 80, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.05);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } catch (e) {}
+    }
+
+    function playFinishFanfare(won) {
+      if (!audioCtx) return;
+      try {
+        const now = audioCtx.currentTime;
+        if (won) {
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now + i * 0.08);
+            gain.gain.setValueAtTime(0.2, now + i * 0.08);
+            gain.gain.linearRampToValueAtTime(0.001, now + i * 0.08 + 0.3);
+            osc.start(now + i * 0.08);
+            osc.stop(now + i * 0.08 + 0.3);
+          });
+        } else {
+          [350, 310, 270].forEach((f, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(f, now + i * 0.12);
+            gain.gain.setValueAtTime(0.12, now + i * 0.12);
+            gain.gain.linearRampToValueAtTime(0.001, now + i * 0.12 + 0.25);
+            osc.start(now + i * 0.12);
+            osc.stop(now + i * 0.12 + 0.25);
+          });
+        }
+      } catch (e) {}
+    }
+
+    // --- STATO GIOCO & DOM ---
+    const STORAGE_KEY = 'casino_balance';
+    let balance = parseInt(localStorage.getItem(STORAGE_KEY)) || 1000;
+    let selectedRunnerId = 1;
+    let currentBet = 20;
+    let isRacing = false;
+
+    const canvas = document.getElementById('trackCanvas');
+    const ctx = canvas.getContext('2d');
+    const arenaCard = document.getElementById('arenaCard');
+    const balanceDisplay = document.getElementById('balanceDisplay');
+    const betInput = document.getElementById('betInput');
+    const btnReload = document.getElementById('btnReload');
+    const actionBtn = document.getElementById('actionBtn');
+    const btnSub = document.getElementById('btnSub');
+    const runnersRow = document.getElementById('runnersRow');
+    const winnerBanner = document.getElementById('winnerBanner');
+    const bannerTitle = document.getElementById('bannerTitle');
+    const bannerSub = document.getElementById('bannerSub');
+    const historyBar = document.getElementById('historyBar');
+
+    // Dati dinamici simulazione corsa
+    let racers = [];
+    let predeterminedWinner = null;
+    let raceStartTime = null;
+    let animFrameId = null;
+    let particles = [];
+    let lastTickTime = 0;
+
+    // Crea bottoni corridori
+    function initRunnersUI() {
+      runnersRow.innerHTML = '';
+      RUNNERS.forEach(r => {
+        const btn = document.createElement('div');
+        btn.className = `runner-btn ${r.id === selectedRunnerId ? 'selected' : ''}`;
+        btn.id = `runnerBtn${r.id}`;
+        btn.style.borderColor = r.id === selectedRunnerId ? r.color : 'var(--border)';
+        btn.innerHTML = `
+          <div class="runner-badge">
+            <span class="runner-dot-preview" style="background:${r.color}; box-shadow:0 0 6px ${r.color}"></span>
+            <span>#${r.id}</span>
+          </div>
+          <span class="runner-odds">${r.odds.toFixed(1)}x</span>
+        `;
+        btn.addEventListener('click', () => selectRunner(r.id));
+        runnersRow.appendChild(btn);
+      });
+      updateActionSubtitle();
+    }
+
+    function selectRunner(id) {
+      if (isRacing) return;
+      selectedRunnerId = id;
+      RUNNERS.forEach(r => {
+        const b = document.getElementById(`runnerBtn${r.id}`);
+        if (r.id === id) {
+          b.classList.add('selected');
+          b.style.borderColor = r.color;
+          b.style.background = r.bg;
+        } else {
+          b.classList.remove('selected');
+          b.style.borderColor = 'var(--border)';
+          b.style.background = 'var(--bg-input)';
+        }
+      });
+      updateActionSubtitle();
+    }
+
+    function updateBalanceUI() {
+      balanceDisplay.textContent = balance;
+      localStorage.setItem(STORAGE_KEY, balance);
+      updateActionSubtitle();
+    }
+
+    function updateActionSubtitle() {
+      const runner = RUNNERS.find(r => r.id === selectedRunnerId);
+      const val = parseInt(betInput.value) || 0;
+      btnSub.textContent = `Punta ${val} su #${runner.id} (${runner.name})`;
+    }
+
+    betInput.addEventListener('input', () => {
+      let val = parseInt(betInput.value) || 1;
+      if (val < 1) val = 1;
+      if (val > balance) val = Math.max(1, balance);
+      betInput.value = val;
+      updateActionSubtitle();
+    });
+
+    function setBetFraction(multiplier) {
+      if (isRacing) return;
+      let val = Math.floor((parseInt(betInput.value) || 10) * multiplier);
+      val = Math.max(1, Math.min(val, balance));
+      betInput.value = val;
+      updateActionSubtitle();
+    }
+
+    function setFixedBet(amount) {
+      if (isRacing) return;
+      betInput.value = Math.min(amount, balance);
+      updateActionSubtitle();
+    }
+
+    function setMaxBet() {
+      if (isRacing) return;
+      betInput.value = Math.max(1, balance);
+      updateActionSubtitle();
+    }
+
+    btnReload.addEventListener('click', () => {
+      balance += 500;
+      updateBalanceUI();
+    });
+
+    // --- SETUP CANVAS & PISTA ---
+    function resizeCanvas() {
+      const rect = arenaCard.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+      drawTrack(0);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // --- LOGICA SIMULAZIONE CORSA ---
+    function pickWinnerRNG() {
+      const r = Math.random();
+      let accum = 0;
+      for (let runner of RUNNERS) {
+        accum += runner.prob;
+        if (r <= accum) return runner;
+      }
+      return RUNNERS[0];
+    }
+
+    function startRace() {
+      if (isRacing) return;
+      initAudio();
+      currentBet = parseInt(betInput.value) || 10;
+      if (currentBet > balance) {
+        alert("Credito insufficiente per questa puntata!");
+        return;
+      }
+
+      balance -= currentBet;
+      updateBalanceUI();
+
+      isRacing = true;
+      actionBtn.classList.add('racing');
+      actionBtn.querySelector('span').textContent = 'CORSA IN CORSO';
+      btnSub.textContent = 'Trattieni il respiro...';
+      winnerBanner.className = 'winner-banner';
+
+      playStartBell();
+
+      // Determina il vincitore via RNG matematico
+      predeterminedWinner = pickWinnerRNG();
+
+      // Inizializza i 5 corridori
+      const w = arenaCard.clientWidth;
+      const startX = 52;
+      const finishX = w - 36;
+      const totalDistance = finishX - startX;
+      const raceDuration = 5.2; // Durata ~5 secondi per massima suspense
+
+      racers = RUNNERS.map(r => {
+        const isWinner = (r.id === predeterminedWinner.id);
+        // Durata arrivo: il vincitore arriva a T, gli altri tra T + 0.15s e T + 0.8s
+        const arrivalTime = isWinner ? raceDuration : raceDuration + 0.18 + Math.random() * 0.65;
+        return {
+          ...r,
+          x: startX,
+          baseSpeed: totalDistance / (arrivalTime * 60),
+          progress: 0,
+          speedOffset: 0,
+          noisePhase: Math.random() * Math.PI * 2,
+          isWinner: isWinner,
+          finished: false,
+          trail: []
+        };
+      });
+
+      particles = [];
+      raceStartTime = performance.now();
+      lastTickTime = performance.now();
+      animFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function gameLoop(timestamp) {
+      const elapsed = (timestamp - raceStartTime) / 1000;
+      const w = arenaCard.clientWidth;
+      const startX = 52;
+      const finishX = w - 36;
+      const totalDistance = finishX - startX;
+
+      // Suono ritmico del galoppo durante la gara
+      if (timestamp - lastTickTime > 180 && elapsed < 5.0) {
+        playGallopTick();
+        lastTickTime = timestamp;
+      }
+
+      let allFinished = true;
+
+      racers.forEach(r => {
+        if (!r.finished) {
+          // Fase di gara con sorpassi organici basati su onde sinusoidali
+          r.noisePhase += 0.05;
+          const surge = Math.sin(r.noisePhase) * (r.isWinner ? 0.35 : 0.28);
+          
+          // Nei secondi finali il vincitore trova lo spunto decisivo
+          let finalKick = 0;
+          if (elapsed > 3.8 && r.isWinner) {
+            finalKick = 0.45;
+          }
+
+          const currentVelocity = r.baseSpeed * (1 + surge + finalKick);
+          r.x += currentVelocity;
+
+          // Memorizza trail per effetto scia
+          r.trail.push({ x: r.x, opacity: 1.0 });
+          if (r.trail.length > 8) r.trail.shift();
+
+          // Genera particelle scia
+          if (Math.random() < 0.3) {
+            particles.push({
+              x: r.x - 4,
+              y: getLaneY(r.id),
+              vx: -(1 + Math.random() * 2),
+              vy: (Math.random() - 0.5) * 1.5,
+              life: 1.0,
+              color: r.color
+            });
+          }
+
+          if (r.x >= finishX) {
+            r.x = finishX;
+            r.finished = true;
+          } else {
+            allFinished = false;
+          }
+        }
+      });
+
+      drawTrack(elapsed);
+
+      if (!allFinished) {
+        animFrameId = requestAnimationFrame(gameLoop);
+      } else {
+        finishRace();
+      }
+    }
+
+    function finishRace() {
+      const userWon = (selectedRunnerId === predeterminedWinner.id);
+      const wonAmount = userWon ? Math.floor(currentBet * predeterminedWinner.odds) : 0;
+      
+      if (userWon) {
+        balance += wonAmount;
+        updateBalanceUI();
+      }
+
+      playFinishFanfare(userWon);
+
+      // Mostra Banner
+      bannerTitle.textContent = `VINCE IL #${predeterminedWinner.id} (${predeterminedWinner.name})!`;
+      if (userWon) {
+        bannerSub.textContent = `PRESO! +${wonAmount} crediti (${predeterminedWinner.odds.toFixed(2)}x)`;
+        winnerBanner.className = 'winner-banner active win';
+      } else {
+        bannerSub.textContent = `Hai perso ${currentBet} crediti`;
+        winnerBanner.className = 'winner-banner active loss';
+      }
+
+      // Aggiungi a History Bar
+      addHistoryPill(predeterminedWinner, userWon);
+
+      // Resetta stato dopo 2s
+      setTimeout(() => {
+        isRacing = false;
+        actionBtn.classList.remove('racing');
+        actionBtn.querySelector('span').textContent = 'PARTENZA';
+        updateActionSubtitle();
+      }, 1800);
+    }
+
+    function addHistoryPill(winner, won) {
+      const pill = document.createElement('div');
+      pill.className = 'history-pill';
+      
+      const dot = document.createElement('span');
+      dot.className = 'pill-dot ' + (won ? 'dot-win' : 'dot-loss');
+      
+      const text = document.createTextNode(`#${winner.id} (${winner.odds.toFixed(1)}x)`);
+      
+      pill.appendChild(dot);
+      pill.appendChild(text);
+      
+      historyBar.insertBefore(pill, historyBar.firstChild);
+      if (historyBar.children.length > 14) {
+        historyBar.removeChild(historyBar.lastChild);
+      }
+    }
+
+    function getLaneY(runnerId) {
+      const h = arenaCard.clientHeight;
+      const laneH = h / 5;
+      return (runnerId - 1) * laneH + laneH / 2;
+    }
+
+    // --- RENDERING CANVAS DELLA PISTA ---
+    function drawTrack(elapsed) {
+      const w = arenaCard.clientWidth;
+      const h = arenaCard.clientHeight;
+      if (!w || !h) return;
+
+      // Pulizia buffer
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+
+      const laneH = h / 5;
+      const startX = 52;
+      const finishX = w - 36;
+
+      // Disegna corsie (5 corsie orizzontali)
+      for (let i = 0; i < 5; i++) {
+        const y = i * laneH;
+
+        // Sfondo corsia alternato
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(255, 255, 255, 0.015)' : 'rgba(0, 0, 0, 0.15)';
+        ctx.fillRect(0, y, w, laneH);
+
+        // Linea divisoria corsia
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 6]);
+        ctx.beginPath();
+        ctx.moveTo(startX, y + laneH);
+        ctx.lineTo(finishX, y + laneH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Badge Numero Corsia a sinistra
+        const runner = RUNNERS[i];
+        ctx.fillStyle = runner.color;
+        ctx.beginPath();
+        ctx.arc(22, y + laneH / 2, 11, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${runner.id}`, 22, y + laneH / 2);
+      }
+
+      // Linea di Partenza
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(startX, 0);
+      ctx.lineTo(startX, h);
+      ctx.stroke();
+
+      // Traguardo a scacchi (Finish Line)
+      const checkerSize = 6;
+      for (let y = 0; y < h; y += checkerSize) {
+        for (let x = 0; x < 2; x++) {
+          const isBlack = (Math.floor(y / checkerSize) + x) % 2 === 0;
+          ctx.fillStyle = isBlack ? '#ffffff' : '#0b0f19';
+          ctx.fillRect(finishX + x * checkerSize, y, checkerSize, checkerSize);
+        }
+      }
+
+      // Disegna Particelle scia
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.04;
+
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life * 0.7;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+      }
+
+      // Disegna i 5 Corridori (Pallini Neon ad alta luminosità)
+      const currentRacers = isRacing ? racers : RUNNERS.map(r => ({ ...r, x: startX, trail: [] }));
+
+      currentRacers.forEach(r => {
+        const y = getLaneY(r.id);
+
+        // Scia luminosa
+        if (r.trail && r.trail.length > 1) {
+          for (let t = 0; t < r.trail.length; t++) {
+            const alpha = (t + 1) / r.trail.length * 0.4;
+            ctx.fillStyle = r.color;
+            ctx.globalAlpha = alpha;
+            ctx.beginPath();
+            ctx.arc(r.trail[t].x, y, 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1.0;
+        }
+
+        // Alone luminoso esterno (Glow)
+        ctx.shadowColor = r.color;
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = r.color;
+        ctx.beginPath();
+        ctx.arc(r.x, y, 7.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Nucleo centrale brillante
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(r.x, y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // Supporto Barra Spaziatrice
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        startRace();
+      }
+    });
+
+    // Inizializzazione
+    initRunnersUI();
+    selectRunner(1);
+    updateBalanceUI();
+    setTimeout(resizeCanvas, 50);
+  </script>
+</body>
+</html>
